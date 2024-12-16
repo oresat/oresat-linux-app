@@ -10,7 +10,7 @@ from oresat_configs import Mission, OreSatConfig
 
 from ._internals.app import App, app
 from ._internals.rest_api import RestAPI, render_olaf_template, rest_api
-from ._internals.services.logs import logger_tmp_file_setup
+from ._internals.services.logs import LogServiceHandler
 from ._internals.updater import Updater, UpdaterState
 from .board.adc import Adc
 from .board.cpufreq import A8_CPUFREQS, get_cpufreq, get_cpufreq_gov, set_cpufreq, set_cpufreq_gov
@@ -113,8 +113,7 @@ def olaf_setup(name: str, args: Optional[Namespace] = None) -> tuple[Namespace, 
         logger.add(SysLogHandler(address="/dev/log"), level=level, backtrace=True)
     else:
         logger.add(sys.stdout, level=level, backtrace=True)
-
-    logger_tmp_file_setup(level)
+    logger.add(LogServiceHandler(), level=level, backtrace=True)
 
     config = OreSatConfig(Mission.from_string(args.oresat))
 

@@ -1,5 +1,6 @@
 """Service for the getting system logs over CAN."""
 
+import logging
 import os
 import tarfile
 
@@ -8,14 +9,21 @@ from loguru import logger
 from ...common.oresat_file import new_oresat_file
 from ...common.service import Service
 
-TMP_LOGS_FILE = "/tmp/olaf.log"
+_logs = []
 
 
-def logger_tmp_file_setup(level: str):
-    """Get the boot log file handler and clean up temp log file used by LogsService."""
-    if os.path.isfile(TMP_LOGS_FILE):
-        os.remove(TMP_LOGS_FILE)
-    logger.add(TMP_LOGS_FILE, level=level, backtrace=True)
+class LogServiceHandler(logging.Handler):
+    """Custom Log handler that doesn't log to file."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.data = []
+
+    def emit(self, record: logging.LogRecord) -> None:
+        """Override the emit method to save to memory."""
+        global _logs  # pylint: disable=W0603
+        _logs.append(record.getMessage())
+        _logs = _logs[-500:]
 
 
 class LogsService(Service):
@@ -47,12 +55,6 @@ class LogsService(Service):
         self.sleep(0.1)
 
     def on_read_since_boot(self) -> str:
-        """SDO callback to get a copy of logs since boot."""
+        """SDO callback to get a copy of the OLAF app logs since boot."""
 
-        if not os.path.isfile(TMP_LOGS_FILE):
-            return "no logs"
-
-        with open(TMP_LOGS_FILE, "r") as f:
-            ret = "".join(reversed(f.readlines()[-500:]))
-
-        return ret
+        return "\n".join(reversed(_logs))
